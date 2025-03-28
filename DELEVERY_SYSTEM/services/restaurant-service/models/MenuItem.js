@@ -57,6 +57,25 @@ const menuItemSchema = new mongoose.Schema(
   }
 );
 
+// Add methods to the schema
+menuItemSchema.methods = {
+  toJSON() {
+    const menuItem = this.toObject();
+    delete menuItem.__v;
+    return menuItem;
+  }
+};
+
+// Add static methods to the schema
+menuItemSchema.statics = {
+  async findByIdAndDelete(id) {
+    return this.findOneAndDelete({ _id: id });
+  },
+  async deleteOne(query) {
+    return this.deleteOne(query);
+  }
+};
+
 const MenuItem = mongoose.model('MenuItem', menuItemSchema);
 
 module.exports = MenuItem; 
