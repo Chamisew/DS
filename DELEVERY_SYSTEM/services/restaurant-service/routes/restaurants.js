@@ -61,3 +61,47 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Get current user's restaurant
+router.get('/me', auth, async (req, res) => {
+  try {
+    console.log('Getting restaurant for user:', req.user._id);
+    
+    if (req.user.role !== 'restaurant') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    let restaurant = await Restaurant.findOne({ owner: req.user._id });
+    
+    if (!restaurant) {
+      console.log('No restaurant found for user:', req.user._id);
+      // Create a default restaurant for the user
+      restaurant = new Restaurant({
+        name: 'My Restaurant',
+        description: 'Welcome to my restaurant',
+        cuisine: 'General',
+        address: '123 Main St',
+        owner: req.user._id,
+        deliveryTime: 30,
+        minOrder: 10,
+        deliveryFee: 5,
+        isOpen: true,
+        isVerified: false
+      });
+
+      try {
+        restaurant = await restaurant.save();
+        console.log('Created new restaurant:', restaurant);
+      } catch (error) {
+        console.error('Error creating restaurant:', error);
+        return res.status(500).json({ message: 'Failed to create restaurant' });
+      }
+    }
+
+    console.log('Found/created restaurant:', restaurant);
+    res.json(restaurant);
+  } catch (error) {
+    console.error('Error fetching/creating user restaurant:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
