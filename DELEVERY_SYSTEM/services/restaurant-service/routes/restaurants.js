@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Restaurant = require('../models/Restaurant');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
+const MenuItem = require('../models/MenuItem');
+const Order = require('../models/Order');
+const axios = require('axios');
 
 
 // Health check endpoint
@@ -102,6 +106,27 @@ router.get('/me', auth, async (req, res) => {
     res.json(restaurant);
   } catch (error) {
     console.error('Error fetching/creating user restaurant:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+// Get restaurant menu items (public access)
+router.get('/:id/menu', async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    const menuItems = await MenuItem.find({ 
+      restaurant: restaurant._id,
+      isAvailable: true 
+    }).select('name description price category image isAvailable');
+    
+    res.json(menuItems);
+  } catch (error) {
+    console.error('Error getting restaurant menu items:', error);
     res.status(500).json({ message: error.message });
   }
 });
