@@ -91,5 +91,99 @@ router.get('/ready', auth, async (req, res) => {
   }
 });
 
+// Get delivery statistics
+router.get('/stats', auth, async (req, res) => {
+  try {
+    console.log('Fetching delivery statistics...');
+    
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ 
+        message: 'Access denied',
+        error: 'Only delivery personnel can view statistics'
+      });
+    }
+
+    const deliveryPersonId = req.user.deliveryPerson;
+    if (!deliveryPersonId) {
+      return res.status(400).json({ 
+        message: 'Invalid request',
+        error: 'Delivery person ID not found'
+      });
+    }
+
+    // Get total deliveries
+    const totalDeliveries = await Order.countDocuments({ 
+      deliveryPerson: deliveryPersonId 
+    });
+
+    // Get completed deliveries
+    const completedDeliveries = await Order.countDocuments({ 
+      deliveryPerson: deliveryPersonId,
+      status: 'delivered'
+    });
+
+    // Get active deliveries
+    const activeDeliveries = await Order.countDocuments({ 
+      deliveryPerson: deliveryPersonId,
+      status: 'in-progress'
+    });
+
+    // Calculate total earnings (assuming $5 per delivery)
+    const totalEarnings = completedDeliveries * 5;
+
+    res.json({
+      totalDeliveries,
+      completedDeliveries,
+      activeDeliveries,
+      totalEarnings
+    });
+  } catch (error) {
+    console.error('Error fetching delivery statistics:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// Get ready orders for delivery
+router.get('/available', auth, async (req, res) => {
+  try {
+    console.log('Fetching available orders...');
+    console.log('User role:', req.user.role);
+    
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ 
+        message: 'Access denied',
+        error: 'Only delivery personnel can view available orders'
+      });
+    }
+
+    // First, let's check all orders in the database
+    const allOrders = await Order.find({});
+    console.log('All orders in database:', allOrders);
+
+    // Then, let's check orders with status 'ready'
+    const readyOrders = await Order.find({ 
+      status: { $in: ['ready', 'pending'] },
+      deliveryPerson: { $exists: false }
+    });
+    
+    console.log('Ready orders found:', readyOrders);
+    
+    res.json({
+      message: 'Available orders retrieved successfully',
+      data: readyOrders
+    });
+  } catch (error) {
+    console.error('Error fetching available orders:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+
 
 module.exports = router; 
