@@ -66,6 +66,36 @@ router.get('/history', auth, async (req, res) => {
   }
 });
 
+// Accept an order for delivery
+router.post('/:orderId/accept', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ message: 'Only delivery personnel can accept orders' });
+    }
+
+    const order = await Order.findById(req.params.orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.status !== 'ready') {
+      return res.status(400).json({ message: 'Order is not ready for delivery' });
+    }
+
+    if (order.deliveryPerson) {
+      return res.status(400).json({ message: 'Order already assigned to a delivery person' });
+    }
+
+    order.deliveryPerson = req.user._id;
+    order.status = 'picked_up';
+    await order.save();
+
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 
 
 
