@@ -9,8 +9,7 @@ mongoose.set('strictPopulate', false);
 // Import models in correct order
 const User = require('./models/User'); // User model must be imported first
 const Restaurant = require('./models/Restaurant'); // Restaurant model depends on User
-const MenuItemSchema = require('./models/MenuItem'); // MenuItem schema
-const Order = require('./models/Order'); // Order model depends on both User and Restaurant
+
 
 
 
@@ -20,7 +19,11 @@ try {
 } catch (error) {
   mongoose.model('User', User.schema);
 }
-
+try {
+  mongoose.model('Restaurant');
+} catch (error) {
+  mongoose.model('Restaurant', Restaurant.schema);
+}
 
 const app = express();
 
