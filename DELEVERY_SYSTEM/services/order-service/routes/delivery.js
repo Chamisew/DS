@@ -125,5 +125,60 @@ router.post('/:orderId/delivered', auth, async (req, res) => {
   }
 });
 
+// Get ready orders for delivery dashboard
+router.get('/ready', auth, async (req, res) => {
+  try {
+    // Check if user is a delivery person
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ message: 'Access denied. Delivery personnel only.' });
+    }
+
+    const readyOrders = await Order.find({ 
+      status: 'ready',
+      deliveryPerson: { $exists: false } // Only show orders not assigned to any delivery person
+    })
+      .populate('user', 'name email phone')
+      .populate('restaurant', 'name address')
+      .populate('items.menuItem', 'name price')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    console.log(`Found ${readyOrders.length} ready orders for delivery`);
+
+    // Format the orders data for delivery dashboard
+    const formattedOrders = readyOrders.map(order => ({
+      _id: order._id,
+      user: {
+        name: order.user.name,
+        email: order.user.email,
+        phone: order.user.phone
+      },
+      restaurant: {
+        name: order.restaurant.name,
+        address: order.restaurant.address
+      },
+      items: order.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        specialInstructions: item.specialInstructions
+      })),
+      totalAmount: order.totalAmount,
+      deliveryAddress: order.deliveryAddress,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    }));
+
+    res.json(formattedOrders);
+  } catch (error) {
+    console.error('Error fetching ready orders:', error);
+    res.status(500).json({ 
+      message: 'Error fetching ready orders',
+      error: error.message 
+    });
+  }
+});
 
 module.exports = router; 
