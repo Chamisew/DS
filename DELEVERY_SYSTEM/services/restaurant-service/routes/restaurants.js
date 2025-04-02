@@ -130,3 +130,28 @@ router.get('/:id/menu', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Get restaurant menu items (restaurant owner access)
+router.get('/menu/restaurant/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'restaurant') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    // Verify ownership
+    if (restaurant.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const menuItems = await MenuItem.find({ restaurant: restaurant._id });
+    res.json(menuItems);
+  } catch (error) {
+    console.error('Error getting restaurant menu items:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
