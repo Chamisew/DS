@@ -207,3 +207,21 @@ router.get('/:id/orders', auth, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+
+// Get restaurant details
+router.get('/:id', async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id)
+      .populate('owner', 'name email');
+
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    res.json(restaurant);
+  } catch (error) {
+    console.error('Error getting restaurant details:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
