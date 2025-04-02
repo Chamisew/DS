@@ -155,3 +155,55 @@ router.get('/menu/restaurant/:id', auth, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+
+// Get restaurant orders
+router.get('/:id/orders', auth, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    // Verify ownership
+    if (restaurant.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const orders = await Order.find({ restaurant: restaurant._id })
+      .populate('user', 'name email phone')
+      .populate('items.menuItem', 'name price')
+      .sort({ createdAt: -1 });
+
+    console.log('Found orders:', orders.length);
+    console.log('Sample order data:', orders.length > 0 ? {
+      orderId: orders[0]._id,
+      userId: orders[0].user?._id,
+      userName: orders[0].user?.name,
+      userEmail: orders[0].user?.email
+    } : 'No orders');
+
+    // Format the orders data
+    const formattedOrders = orders.map(order => ({
+      _id: order._id,
+      user: order.user,
+      items: order.items.map(item => ({
+        menuItem: item.menuItem,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      totalAmount: order.totalAmount,
+      status: order.status,
+      deliveryAddress: order.deliveryAddress,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    }));
+
+    res.json(formattedOrders);
+  } catch (error) {
+    console.error('Error getting restaurant orders:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
