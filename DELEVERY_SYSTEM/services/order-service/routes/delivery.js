@@ -96,7 +96,34 @@ router.post('/:orderId/accept', auth, async (req, res) => {
   }
 });
 
+// Mark order as delivered
+router.post('/:orderId/delivered', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ message: 'Only delivery personnel can mark orders as delivered' });
+    }
 
+    const order = await Order.findById(req.params.orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.deliveryPerson.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to mark this order as delivered' });
+    }
+
+    if (order.status !== 'picked_up') {
+      return res.status(400).json({ message: 'Order must be picked up before marking as delivered' });
+    }
+
+    order.status = 'delivered';
+    await order.save();
+
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 
 module.exports = router; 
