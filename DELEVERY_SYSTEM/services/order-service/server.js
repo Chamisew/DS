@@ -10,7 +10,7 @@ mongoose.set('strictPopulate', false);
 const User = require('./models/User'); // User model must be imported first
 const Restaurant = require('./models/Restaurant'); // Restaurant model depends on User
 const MenuItemSchema = require('./models/MenuItem'); // MenuItem schema
-
+const Order = require('./models/Order'); // Order model depends on both User and Restaurant
 
 
 // Register models
