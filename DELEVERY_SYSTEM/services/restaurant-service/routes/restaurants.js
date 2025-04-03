@@ -285,3 +285,25 @@ router.post('/', auth, async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
+
+
+// Update restaurant
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    if (restaurant.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to update this restaurant' });
+    }
+
+    Object.assign(restaurant, req.body);
+    const updatedRestaurant = await restaurant.save();
+    res.json(updatedRestaurant);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
