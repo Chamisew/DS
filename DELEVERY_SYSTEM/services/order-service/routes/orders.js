@@ -484,5 +484,40 @@ router.post('/:orderId/payment-success', async (req, res) => {
     }
 });
 
+// Handle failed payment
+router.post('/:orderId/payment-failed', auth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { paymentIntentId, error: paymentError } = req.body;
+
+    console.log('Processing failed payment for order:', orderId);
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      console.error('Order not found:', orderId);
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    order.paymentStatus = 'failed';
+    order.status = 'cancelled'; // Cancel order if payment fails
+    order.paymentDetails = {
+      paymentIntentId,
+      error: paymentError,
+      failedAt: new Date()
+    };
+
+    await order.save();
+    console.log('Order updated after failed payment:', order._id);
+
+    res.json({ order });
+  } catch (error) {
+    console.error('Error processing failed payment:', error);
+    res.status(500).json({
+      message: 'Error processing payment failure',
+      error: error.message
+    });
+  }
+});
+
 
 module.exports = router; 
