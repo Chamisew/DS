@@ -362,5 +362,69 @@ router.put('/:id/cancel', auth, async (req, res) => {
   }
 });
 
+// Get orders for a restaurant
+router.get('/restaurant/:id', auth, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    // Verify ownership
+    if (restaurant.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Fetch orders with proper population
+    const orders = await Order.find({ restaurant: restaurant._id })
+      .populate({
+        path: 'user',
+        select: 'name email phone',
+        model: User
+      })
+      .populate('items.menuItem', 'name price')
+      .sort({ createdAt: -1 });
+
+    console.log('Found orders:', orders.length);
+    if (orders.length > 0) {
+      console.log('Sample order data:', {
+        orderId: orders[0]._id,
+        userId: orders[0].user?._id,
+        userName: orders[0].user?.name,
+        userEmail: orders[0].user?.email
+      });
+    }
+
+    // Format the orders data
+    const formattedOrders = orders.map(order => ({
+      _id: order._id,
+      user: order.user ? {
+        _id: order.user._id,
+        name: order.user.name,
+        email: order.user.email,
+        phone: order.user.phone
+      } : null,
+      items: order.items.map(item => ({
+        menuItem: item.menuItem,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      totalAmount: order.totalAmount,
+      status: order.status,
+      deliveryAddress: order.deliveryAddress,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    }));
+
+    res.json(formattedOrders);
+  } catch (error) {
+    console.error('Error getting restaurant orders:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
 
 module.exports = router; 
