@@ -59,5 +59,36 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Get a single order
+router.get('/:id', auth, async (req, res) => {
+  try {
+    console.log('Fetching order:', req.params.id, 'for user:', req.user._id);
+    
+    if (!req.user._id) {
+      console.error('No user ID found in request');
+      return res.status(401).json({ message: 'Invalid user data' });
+    }
+
+    const order = await Order.findOne({
+      _id: req.params.id,
+      $or: [
+        { user: req.user._id },
+        { restaurant: req.user.restaurant }
+      ]
+    })
+    .populate('user', 'name email phone')
+    .populate('restaurant', 'name')
+    .lean();
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    res.json(order);
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    res.status(500).json({ message: 'Error fetching order' });
+  }
+});
 
 module.exports = router; 
