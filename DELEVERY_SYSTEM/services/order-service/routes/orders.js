@@ -91,4 +91,225 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
+// Create new order
+router.post('/', auth, async (req, res) => {
+  try {
+    console.log('Creating new order with data:', req.body);
+    
+    if (!req.user._id) {
+      console.error('No user ID found in request');
+      return res.status(401).json({ message: 'Invalid user data' });
+    }
+
+    const { restaurantId, restaurant, items, deliveryAddress, paymentMethod, deliveryFee, notes } = req.body;
+    
+    // Use either restaurantId or restaurant field
+    const restaurantIdentifier = restaurantId || restaurant;
+    
+    if (!restaurantIdentifier) {
+      console.error('No restaurant ID provided');
+      return res.status(400).json({ message: 'Restaurant ID is required' });
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.error('Invalid or empty items array');
+      return res.status(400).json({ message: 'At least one item is required' });
+    }
+
+    // Verify restaurant exists and is open
+    try {
+      console.log('Fetching restaurant:', restaurantIdentifier);
+      const restaurantResponse = await axios.get(
+        `${process.env.RESTAURANT_SERVICE_URL}/api/restaurants/${restaurantIdentifier}`
+      );
+      const restaurantData = restaurantResponse.data;
+      console.log('Restaurant found:', restaurantData);
+
+      if (!restaurantData.isOpen) {
+        return res.status(400).json({ message: 'Restaurant is currently closed' });
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant:', error.message);
+      if (error.response) {
+        console.error('Restaurant service response:', error.response.data);
+      }
+      return res.status(500).json({ 
+        message: 'Error verifying restaurant',
+        error: error.message 
+      });
+    }
+
+    // Calculate total amount and verify items
+    let totalAmount = 0;
+    const orderItems = [];
+
+    for (const item of items) {
+      try {
+        console.log('Processing item:', JSON.stringify(item, null, 2));
+        console.log('Fetching menu item from:', `${process.env.RESTAURANT_SERVICE_URL}/api/menu/${item.menuItem}`);
+        
+        const menuItemResponse = await axios.get(
+          `${process.env.RESTAURANT_SERVICE_URL}/api/menu/${item.menuItem}`
+        );
+        
+        console.log('Menu item response:', JSON.stringify(menuItemResponse.data, null, 2));
+        
+        if (!menuItemResponse.data || !menuItemResponse.data._id) {
+          throw new Error('Invalid menu item data received');
+        }
+
+        const menuItem = menuItemResponse.data;
+        console.log('Menu item found:', JSON.stringify(menuItem, null, 2));
+
+        if (!menuItem.isAvailable) {
+          return res.status(400).json({ message: `Item ${menuItem.name} is not available` });
+        }
+
+        totalAmount += menuItem.price * item.quantity;
+        
+        // Create order item with all required fields
+        const orderItem = {
+          menuItemId: menuItem._id.toString(),
+          name: menuItem.name,
+          quantity: item.quantity,
+          price: menuItem.price,
+          specialInstructions: item.specialInstructions || ''
+        };
+        
+        console.log('Created order item:', JSON.stringify(orderItem, null, 2));
+        orderItems.push(orderItem);
+      } catch (error) {
+        console.error('Error processing menu item:', error.message);
+        if (error.response) {
+          console.error('Menu item service response:', error.response.data);
+        }
+        return res.status(500).json({ 
+          message: 'Error processing menu item',
+          error: error.message,
+          details: error.response?.data
+        });
+      }
+    }
+
+    // Add delivery fee to total amount
+    totalAmount += deliveryFee || 0;
+
+    // Create the order with explicit payment status
+    const order = new Order({
+      user: req.user._id,
+      restaurant: restaurantIdentifier,
+      items: orderItems,
+      totalAmount: totalAmount,
+      deliveryFee: deliveryFee || 0,
+      deliveryAddress,
+      paymentMethod,
+      notes,
+      status: 'pending',
+      // Explicitly set payment status based on payment method
+      paymentStatus: paymentMethod === 'card' ? 'pending' : 'pending',
+      userDetails: {
+        name: req.user.name,
+        email: req.user.email,
+        phone: req.user.phone,
+        address: req.user.address
+      }
+    });
+
+    console.log('Saving order with data:', {
+      userId: order.user,
+      restaurantId: order.restaurant,
+      items: order.items,
+      totalAmount: order.totalAmount,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus  // Log payment status
+    });
+
+    await order.save();
+
+    // If payment method is card, create payment intent
+    if (paymentMethod === 'card') {
+      try {
+        console.log('Creating payment intent for order:', order._id);
+        const paymentResponse = await axios.post(
+          `${process.env.PAYMENT_SERVICE_URL}/api/payments/create-payment-intent`,
+          {
+            orderId: order._id,
+            amount: totalAmount,
+            currency: 'lkr'
+          },
+          {
+            headers: { 
+              Authorization: req.headers.authorization,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        console.log('Payment intent created:', paymentResponse.data);
+
+        // Update order with payment intent ID
+        order.paymentDetails = {
+          paymentIntentId: paymentResponse.data.paymentIntentId,
+          createdAt: new Date()
+        };
+        await order.save();
+
+        // Return both order and payment intent
+        const populatedOrder = await Order.findById(order._id)
+          .populate({
+            path: 'user',
+            select: 'name email phone',
+            model: mongoose.model('User')
+          })
+          .lean();
+
+        return res.status(201).json({
+          order: populatedOrder,
+          paymentIntent: paymentResponse.data
+        });
+      } catch (paymentError) {
+        console.error('Payment intent creation failed:', paymentError);
+        
+        // Update order status to payment failed
+        order.paymentStatus = 'failed';
+        await order.save();
+
+        return res.status(400).json({
+          message: 'Payment initialization failed',
+          error: paymentError.response?.data?.message || paymentError.message
+        });
+      }
+    } else {
+      // For COD orders, return populated order directly
+      const populatedOrder = await Order.findById(order._id)
+        .populate({
+          path: 'user',
+          select: 'name email phone',
+          model: mongoose.model('User')
+        })
+        .lean();
+
+      console.log('COD order created:', {
+        orderId: populatedOrder._id,
+        paymentMethod: 'cash',
+        paymentStatus: 'pending'
+      });
+
+      res.status(201).json(populatedOrder);
+    }
+  } catch (error) {
+    console.error('Error creating order:', error);
+    if (error.response) {
+      console.error('Service response:', error.response.data);
+    }
+    res.status(500).json({ 
+      message: 'Error creating order',
+      error: error.message 
+    });
+  }
+});
+
+
+
+
 module.exports = router; 
