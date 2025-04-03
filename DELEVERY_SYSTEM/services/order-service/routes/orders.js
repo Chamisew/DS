@@ -425,6 +425,64 @@ router.get('/restaurant/:id', auth, async (req, res) => {
   }
 });
 
+// Handle successful payment
+router.post('/:orderId/payment-success', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { paymentIntentId, amount } = req.body;
+
+        console.log('Processing successful payment:', {
+            orderId,
+            paymentIntentId,
+            amount
+        });
+
+        const order = await Order.findById(orderId);
+        
+        if (!order) {
+            console.error('Order not found:', orderId);
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Update payment status and details
+        order.paymentStatus = 'paid';
+        order.status = 'confirmed';  // Also confirm the order
+        order.paymentDetails = {
+            paymentIntentId,
+            paidAt: new Date(),
+            amount,
+            method: order.paymentMethod,
+            status: 'succeeded'
+        };
+
+        await order.save();
+
+        console.log('Order updated successfully:', {
+            orderId: order._id,
+            paymentStatus: order.paymentStatus,
+            orderStatus: order.status,
+            paymentMethod: order.paymentMethod
+        });
+
+        res.json({
+            success: true,
+            message: 'Payment processed successfully',
+            order: {
+                _id: order._id,
+                status: order.status,
+                paymentStatus: order.paymentStatus,
+                paymentDetails: order.paymentDetails
+            }
+        });
+    } catch (error) {
+        console.error('Error processing payment success:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error processing payment success',
+            error: error.message
+        });
+    }
+});
 
 
 module.exports = router; 
