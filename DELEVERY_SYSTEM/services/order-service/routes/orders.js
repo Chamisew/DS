@@ -31,4 +31,33 @@ router.get('/user', auth, async (req, res) => {
   }
 });
 
+// Get all orders for a restaurant
+router.get('/', auth, async (req, res) => {
+  try {
+    if (!req.user.restaurant) {
+      console.error('No restaurant ID found for user:', req.user._id);
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    console.log('Fetching orders for restaurant:', req.user.restaurant);
+
+    const orders = await Order.find({ restaurant: req.user.restaurant })
+      .populate({
+        path: 'user',
+        select: 'name email phone',
+        model: mongoose.model('User')
+      })
+      .populate('restaurant', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    console.log(`Found ${orders.length} orders`);
+    res.json(orders);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ message: 'Error fetching orders' });
+  }
+});
+
+
 module.exports = router; 
