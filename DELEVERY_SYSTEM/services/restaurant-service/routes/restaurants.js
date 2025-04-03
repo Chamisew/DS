@@ -225,3 +225,63 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+
+// Create restaurant
+router.post('/', auth, async (req, res) => {
+  try {
+    console.log('Create restaurant request:', req.body);
+    console.log('User:', req.user);
+    
+    if (req.user.role !== 'restaurant' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only restaurant owners and admins can create restaurants' });
+    }
+
+    // Validate required fields
+    const requiredFields = ['name', 'cuisine', 'address', 'deliveryTime', 'minOrder', 'deliveryFee'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        missingFields 
+      });
+    }
+
+    // For restaurant owners, ensure they can only create a restaurant for themselves
+    if (req.user.role === 'restaurant') {
+      // Restaurant owners can only create restaurants for themselves
+      const restaurant = new Restaurant({
+        ...req.body,
+        owner: req.user._id,
+        email: req.user.email
+      });
+      
+      const newRestaurant = await restaurant.save();
+      return res.status(201).json(newRestaurant);
+    } else if (req.user.role === 'admin') {
+      // Admins can create restaurants for any owner
+      if (!req.body.owner) {
+        return res.status(400).json({ message: 'Owner ID is required for admin-created restaurants' });
+      }
+      
+      const restaurant = new Restaurant({
+        ...req.body,
+        owner: req.body.owner,
+        email: req.body.email || req.user.email
+      });
+      
+      const newRestaurant = await restaurant.save();
+      return res.status(201).json(newRestaurant);
+    }
+  } catch (error) {
+    console.error('Error creating restaurant:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: 'Validation error',
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+    res.status(400).json({ message: error.message });
+  }
+});
