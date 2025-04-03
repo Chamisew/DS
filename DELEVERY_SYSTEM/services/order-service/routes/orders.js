@@ -309,6 +309,28 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// Update order status
+router.patch('/:id/status', auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findOne({
+      _id: req.params.id,
+      restaurant: req.user.restaurant
+    });
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    order.status = status;
+    await order.save();
+    
+    res.json(order);
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ message: 'Error updating order status' });
+  }
+});
 
 
 
