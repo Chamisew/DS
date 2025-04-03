@@ -332,6 +332,35 @@ router.patch('/:id/status', auth, async (req, res) => {
   }
 });
 
+// Cancel order
+router.put('/:id/cancel', auth, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Only user who placed the order or restaurant owner can cancel
+    if (
+      order.user.toString() !== req.user._id.toString() &&
+      order.restaurant.owner.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: 'Not authorized to cancel this order' });
+    }
+
+    // Only pending or confirmed orders can be cancelled
+    if (!['pending', 'confirmed'].includes(order.status)) {
+      return res.status(400).json({ message: 'Order cannot be cancelled at this stage' });
+    }
+
+    order.status = 'cancelled';
+    const updatedOrder = await order.save();
+    res.json(updatedOrder);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
 
 
 module.exports = router; 
