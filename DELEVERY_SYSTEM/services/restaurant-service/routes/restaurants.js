@@ -307,3 +307,24 @@ router.put('/:id', auth, async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
+
+
+// Delete restaurant
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    if (restaurant.owner.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to delete this restaurant' });
+    }
+
+    await restaurant.remove();
+    res.json({ message: 'Restaurant deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
