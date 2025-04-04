@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const orderRoutes = require('./routes/orders');
 const deliveryRoutes = require('./routes/delivery');
 const { auth, verifyToken } = require('./middleware/auth');
 mongoose.set('strictPopulate', false);
@@ -57,6 +58,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 .catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
+app.use('/api/orders', orderRoutes);
 app.use('/api/delivery', deliveryRoutes);
 
 
