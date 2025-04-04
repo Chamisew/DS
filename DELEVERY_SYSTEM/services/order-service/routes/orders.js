@@ -519,5 +519,67 @@ router.post('/:orderId/payment-failed', auth, async (req, res) => {
   }
 });
 
+// Update payment status
+router.post('/:orderId/update-payment', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { paymentIntentId, paymentStatus, paidAt, amount } = req.body;
+
+        console.log('Received payment status update request:', {
+            orderId,
+            paymentIntentId,
+            paymentStatus,
+            paidAt,
+            amount
+        });
+
+        const order = await Order.findById(orderId);
+        
+        if (!order) {
+            console.error('Order not found:', orderId);
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Always update to paid status when payment is successful
+        order.paymentStatus = 'paid';
+        order.paymentDetails = {
+            paymentIntentId,
+            paidAt: paidAt || new Date(),
+            method: order.paymentMethod,
+            amount: amount,
+            status: 'succeeded'
+        };
+
+        await order.save();
+
+        console.log('Order payment status updated successfully:', {
+            orderId: order._id,
+            newPaymentStatus: order.paymentStatus,
+            paymentDetails: order.paymentDetails
+        });
+
+        res.json({
+            success: true,
+            message: 'Payment status updated successfully',
+            order: {
+                _id: order._id,
+                status: order.status,
+                paymentStatus: order.paymentStatus,
+                paymentDetails: order.paymentDetails
+            }
+        });
+    } catch (error) {
+        console.error('Error updating payment status:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating payment status',
+            error: error.message
+        });
+    }
+});
+
+
+
+
 
 module.exports = router; 
