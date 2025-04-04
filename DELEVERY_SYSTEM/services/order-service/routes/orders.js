@@ -697,5 +697,60 @@ router.post('/:orderId/update-cash-payment', async (req, res) => {
 });
 
 
+// Update order status with payment status for cash payments
+router.patch('/:orderId/status', async (req, res) => {
+  try {
+      const { orderId } = req.params;
+      const { status } = req.body;
+
+      console.log('Updating order status:', {
+          orderId,
+          newStatus: status
+      });
+
+      const order = await Order.findById(orderId);
+      
+      if (!order) {
+          console.error('Order not found:', orderId);
+          return res.status(404).json({ message: 'Order not found' });
+      }
+
+      // Update order status
+      order.status = status;
+
+      // If order is delivered and it's a cash payment, update payment status
+      if (status === 'delivered' && order.paymentMethod === 'cash') {
+          console.log('Updating payment status for cash payment:', orderId);
+          order.paymentStatus = 'paid';
+          order.paymentDetails = {
+              method: 'cash',
+              paidAt: new Date(),
+              status: 'paid'
+          };
+      }
+
+      await order.save();
+
+      console.log('Order updated:', {
+          orderId: order._id,
+          status: order.status,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus
+      });
+
+      res.json({
+          success: true,
+          message: 'Order updated successfully',
+          order: order
+      });
+  } catch (error) {
+      console.error('Error updating order:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Error updating order',
+          error: error.message
+      });
+  }
+});
 
 module.exports = router; 
