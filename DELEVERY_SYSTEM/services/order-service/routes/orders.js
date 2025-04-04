@@ -578,6 +578,67 @@ router.post('/:orderId/update-payment', async (req, res) => {
     }
 });
 
+// Confirm card payment and update status
+router.post('/:orderId/confirm-card-payment', auth, async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { paymentIntentId } = req.body;
+
+        console.log('Confirming card payment for order:', {
+            orderId,
+            paymentIntentId
+        });
+
+        const order = await Order.findById(orderId);
+        
+        if (!order) {
+            console.error('Order not found:', orderId);
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Verify this is a card payment
+        if (order.paymentMethod !== 'card') {
+            return res.status(400).json({ 
+                message: 'Invalid payment method. This endpoint is for card payments only.' 
+            });
+        }
+
+        // Update both payment status and order status
+        order.paymentStatus = 'paid';
+        order.status = 'confirmed';
+        order.paymentDetails = {
+            paymentIntentId,
+            paidAt: new Date(),
+            method: 'card'
+        };
+
+        await order.save();
+
+        console.log('Payment confirmed and status updated:', {
+            orderId: order._id,
+            status: order.status,
+            paymentStatus: order.paymentStatus
+        });
+
+        res.json({
+            success: true,
+            message: 'Payment confirmed and status updated',
+            order: {
+                _id: order._id,
+                status: order.status,
+                paymentStatus: order.paymentStatus,
+                paymentDetails: order.paymentDetails
+            }
+        });
+    } catch (error) {
+        console.error('Error confirming card payment:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error confirming card payment',
+            error: error.message
+        });
+    }
+});
 
 
 
