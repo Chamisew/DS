@@ -3,11 +3,14 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const restaurantRoutes = require('./routes/restaurants');
+const menuRoutes = require('./routes/menu');
 const auth = require('./middleware/auth');
 
+// Import models to ensure they are registered
 require('./models/User');
 require('./models/Restaurant');
 require('./models/MenuItem');
+require('./models/Order');
 
 const app = express();
 
@@ -21,12 +24,16 @@ mongoose
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-  app.use('/api/restaurants', restaurantRoutes);
+// Routes
+app.use('/api/restaurants', restaurantRoutes);
+app.use('/api/menu', menuRoutes);
 
-  app.get('/health', (req, res) => {
-    res.json({ status: 'ok' });
-  });
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
 
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
