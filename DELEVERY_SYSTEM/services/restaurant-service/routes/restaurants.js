@@ -328,3 +328,25 @@ router.delete('/:id', auth, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+
+// Verify restaurant
+router.put('/:id/verify', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can verify restaurants' });
+    }
+
+    const restaurant = await Restaurant.findById(req.params.id);
+
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    restaurant.isVerified = true;
+    const updatedRestaurant = await restaurant.save();
+    res.json(updatedRestaurant);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
