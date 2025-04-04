@@ -640,6 +640,61 @@ router.post('/:orderId/confirm-card-payment', auth, async (req, res) => {
     }
 });
 
+// Update cash payment status
+router.post('/:orderId/update-cash-payment', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        console.log('Received cash payment update request for order:', orderId);
+
+        // Find and update the order in one operation
+        const updatedOrder = await Order.findOneAndUpdate(
+            { _id: orderId, paymentMethod: 'cash' },
+            { 
+                $set: {
+                    paymentStatus: 'paid',
+                    paymentDetails: {
+                        method: 'cash',
+                        paidAt: new Date(),
+                        status: 'paid',
+                        updatedAt: new Date()
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedOrder) {
+            console.error('Order not found or not a cash payment:', orderId);
+            return res.status(404).json({ 
+                success: false,
+                message: 'Order not found or not a cash payment' 
+            });
+        }
+
+        console.log('Successfully updated cash payment:', {
+            orderId: updatedOrder._id,
+            paymentStatus: updatedOrder.paymentStatus,
+            status: updatedOrder.status
+        });
+
+        res.json({
+            success: true,
+            message: 'Cash payment status updated successfully',
+            order: updatedOrder
+        });
+
+    } catch (error) {
+        console.error('Error updating cash payment:', {
+            error: error.message,
+            stack: error.stack
+        });
+        res.status(500).json({
+            success: false,
+            message: 'Error updating cash payment status',
+            error: error.message
+        });
+    }
+});
 
 
 
