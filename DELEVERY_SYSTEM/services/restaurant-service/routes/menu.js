@@ -58,3 +58,23 @@ router.get('/restaurant/:restaurantId', auth, async (req, res) => {
       res.status(500).json({ message: error.message });
     }
   });
+
+
+  // Get menu item by ID
+router.get('/:id', async (req, res) => {
+    try {
+      console.log('Getting menu item by ID:', req.params.id);
+      const menuItem = await MenuItem.findById(req.params.id);
+  
+      if (!menuItem) {
+        console.log('Menu item not found');
+        return res.status(404).json({ message: 'Menu item not found' });
+      }
+  
+      console.log('Found menu item:', menuItem);
+      res.json(menuItem);
+    } catch (error) {
+      console.error('Error getting menu item:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
