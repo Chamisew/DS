@@ -119,3 +119,30 @@ router.post('/', auth, async (req, res) => {
       res.status(400).json({ message: error.message });
     }
   });
+
+
+  // Update menu item
+router.put('/:id', auth, async (req, res) => {
+    try {
+      if (req.user.role !== 'restaurant') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+  
+      const menuItem = await MenuItem.findById(req.params.id);
+      if (!menuItem) {
+        return res.status(404).json({ message: 'Menu item not found' });
+      }
+  
+      const restaurant = await Restaurant.findOne({ owner: req.user._id });
+      if (!restaurant || menuItem.restaurant.toString() !== restaurant._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized to update this menu item' });
+      }
+  
+      Object.assign(menuItem, req.body);
+      await menuItem.save();
+      res.json(menuItem);
+    } catch (error) {
+      console.error('Error updating menu item:', error);
+      res.status(400).json({ message: error.message });
+    }
+  });
