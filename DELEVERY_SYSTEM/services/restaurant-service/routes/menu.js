@@ -78,3 +78,44 @@ router.get('/:id', async (req, res) => {
       res.status(500).json({ message: error.message });
     }
   });
+
+  // Create menu item
+router.post('/', auth, async (req, res) => {
+    try {
+      if (req.user.role !== 'restaurant') {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+  
+      // Get the restaurant for the current user
+      const restaurant = await Restaurant.findOne({ owner: req.user._id });
+      if (!restaurant) {
+        return res.status(404).json({ message: 'Restaurant not found' });
+      }
+  
+      // Validate required fields
+      const { name, description, price, category, preparationTime } = req.body;
+      if (!name || !price || !category || !preparationTime) {
+        return res.status(400).json({ 
+          message: 'Missing required fields',
+          required: ['name', 'price', 'category', 'preparationTime']
+        });
+      }
+  
+      // Create the menu item
+      const menuItem = new MenuItem({
+        name,
+        description,
+        price: Number(price),
+        category,
+        preparationTime: Number(preparationTime),
+        restaurant: restaurant._id,
+        isAvailable: true
+      });
+  
+      await menuItem.save();
+      res.status(201).json(menuItem);
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      res.status(400).json({ message: error.message });
+    }
+  });
