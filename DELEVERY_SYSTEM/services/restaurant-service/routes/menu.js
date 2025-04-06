@@ -146,3 +146,27 @@ router.put('/:id', auth, async (req, res) => {
       res.status(400).json({ message: error.message });
     }
   });
+
+  // Delete a menu item
+router.delete('/:id', auth, async (req, res) => {
+    try {
+      const restaurant = await Restaurant.findOne({ owner: req.user._id });
+      if (!restaurant) {
+        return res.status(404).json({ message: 'Restaurant not found' });
+      }
+  
+      const deletedItem = await MenuItem.findOneAndDelete({
+        _id: req.params.id,
+        restaurant: restaurant._id
+      });
+  
+      if (!deletedItem) {
+        return res.status(404).json({ message: 'Menu item not found or does not belong to this restaurant' });
+      }
+  
+      res.json({ message: 'Menu item deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      res.status(500).json({ message: 'Error deleting menu item', error: error.message });
+    }
+  });
