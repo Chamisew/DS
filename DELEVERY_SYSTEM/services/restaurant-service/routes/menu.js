@@ -170,3 +170,37 @@ router.delete('/:id', auth, async (req, res) => {
       res.status(500).json({ message: 'Error deleting menu item', error: error.message });
     }
   });
+
+  // Update menu item availability
+router.put('/:id/availability', auth, async (req, res) => {
+    try {
+      const menuItem = await MenuItem.findById(req.params.id);
+  
+      if (!menuItem) {
+        return res.status(404).json({ message: 'Menu item not found' });
+      }
+  
+      const restaurant = await Restaurant.findById(menuItem.restaurant);
+  
+      if (restaurant.owner.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized to update menu item availability' });
+      }
+  
+      // Update the menu item directly
+      const result = await MenuItem.updateOne(
+        { _id: req.params.id },
+        { $set: { isAvailable: !menuItem.isAvailable } }
+      );
+  
+      if (result.modifiedCount === 0) {
+        return res.status(404).json({ message: 'Menu item not found' });
+      }
+  
+      res.json({ message: 'Menu item availability updated successfully' });
+    } catch (error) {
+      console.error('Error updating menu item availability:', error);
+      res.status(500).json({ message: 'Error updating menu item availability', error: error.message });
+    }
+  });
+  
+  module.exports = router;
