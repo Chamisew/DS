@@ -350,3 +350,27 @@ router.put('/:id/verify', auth, async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
+
+// Update restaurant status
+router.put('/:id/status', auth, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    if (restaurant.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update restaurant status' });
+    }
+
+    restaurant.isOpen = !restaurant.isOpen;
+    const updatedRestaurant = await restaurant.save();
+    res.json(updatedRestaurant);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+
+module.exports = router; 
