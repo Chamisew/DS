@@ -392,4 +392,48 @@ router.get('/menu', auth, async (req, res) => {
 });
 
 
+router.get('/orders', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'restaurant') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Get the restaurant for the current user
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    // Fetch orders for this restaurant with proper population
+    const orders = await Order.find({ restaurant: restaurant._id })
+      .populate('user', 'name email phone')
+      .populate('items.menuItem', 'name price')
+      .sort({ createdAt: -1 });
+
+    // Format the orders data
+    const formattedOrders = orders.map(order => ({
+      _id: order._id,
+      user: order.user,
+      items: order.items.map(item => ({
+        menuItem: item.menuItem,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      totalAmount: order.totalAmount,
+      status: order.status,
+      deliveryAddress: order.deliveryAddress,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    }));
+
+    res.json(formattedOrders);
+  } catch (error) {
+    console.error('Error fetching restaurant orders:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
 module.exports = router; 
