@@ -373,4 +373,23 @@ router.put('/:id/status', auth, async (req, res) => {
 });
 
 
+// Get restaurant menu (general)
+router.get('/menu', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'restaurant') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const restaurant = await Restaurant.findOne({ owner: req.user._id });
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    res.json(restaurant.menu || []);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
 module.exports = router; 
