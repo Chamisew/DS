@@ -18,7 +18,19 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
 
-
+  const addToCart = (item) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((cartItem) => cartItem.menuItemId === item._id);
+      if (existingItem) {
+        return prevCart.map((cartItem) =>
+          cartItem.menuItemId === item._id
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        );
+      }
+      return [...prevCart, { menuItemId: item._id, quantity: 1, price: item.price, name: item.name }];
+    });
+  };
 
  
 
