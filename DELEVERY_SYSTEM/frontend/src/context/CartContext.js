@@ -48,7 +48,13 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const getCartTotal = () => {
+    return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+  };
 
  
 };
