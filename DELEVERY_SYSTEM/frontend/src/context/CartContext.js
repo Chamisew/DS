@@ -32,9 +32,21 @@ export const CartProvider = ({ children }) => {
     });
   };
 
- 
+  const removeFromCart = (itemId) => {
+    setCart((prevCart) => prevCart.filter((item) => item.menuItemId !== itemId));
+  };
 
-
+  const updateQuantity = (itemId, newQuantity) => {
+    if (newQuantity < 1) {
+      removeFromCart(itemId);
+      return;
+    }
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        item.menuItemId === itemId ? { ...item, quantity: newQuantity } : item
+      )
+    );
+  };
 
   
 
