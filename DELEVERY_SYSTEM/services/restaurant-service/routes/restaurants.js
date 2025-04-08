@@ -435,5 +435,19 @@ router.get('/orders', auth, async (req, res) => {
   }
 });
 
+// Add this to support GET /api/menu/items/:id
+router.get('/menu/items/:id', auth, async (req, res) => {
+  try {
+    const item = await MenuItem.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ message: 'Menu item not found' });
+    }
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
 
 module.exports = router; 
