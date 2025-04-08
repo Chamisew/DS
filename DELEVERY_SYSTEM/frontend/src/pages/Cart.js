@@ -50,6 +50,23 @@ const Cart = () => {
     }
   }, []);
 
+  const handleQuantityChange = (itemId, newQuantity) => {
+    if (newQuantity < 1) {
+      handleRemoveItem(itemId);
+      return;
+    }
+    setCart(prevCart => {
+      const updatedCart = prevCart.map(item => 
+        item.menuItemId === itemId 
+          ? { ...item, quantity: newQuantity }
+          : item
+      );
+      // Save to localStorage after update
+      localStorage.setItem('cart', JSON.stringify(updatedCart));
+      return updatedCart;
+    });
+  };
+
 };
 
 export default Cart; 
