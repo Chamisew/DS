@@ -67,6 +67,36 @@ const Cart = () => {
     });
   };
 
+  const handleRemoveItem = (itemId) => {
+    setCart(prevCart => {
+      const updatedCart = prevCart.filter(item => item.menuItemId !== itemId);
+      // Save to localStorage after removal
+      if (updatedCart.length > 0) {
+        localStorage.setItem('cart', JSON.stringify(updatedCart));
+      } else {
+        localStorage.removeItem('cart');
+      }
+      return updatedCart;
+    });
+  };
+
+  const handlePlaceOrder = () => {
+    // Navigate to restaurant details page with the restaurant ID from the cart
+    const restaurantId = cart[0]?.restaurantId;
+    if (restaurantId) {
+      navigate(`/restaurants/${restaurantId}`);
+    } else {
+      alert('Restaurant information not found');
+    }
+  };
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    if (cart.length > 0) {
+      localStorage.setItem('cart', JSON.stringify(cart));
+    }
+  }, [cart]);
+
 };
 
 export default Cart; 
