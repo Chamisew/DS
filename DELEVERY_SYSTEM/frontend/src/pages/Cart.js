@@ -97,6 +97,7 @@ const Cart = () => {
     }
   }, [cart]);
 
+  
   if (!cart || cart.length === 0) {
     return (
       <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
