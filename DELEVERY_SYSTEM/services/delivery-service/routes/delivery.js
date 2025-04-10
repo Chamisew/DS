@@ -184,6 +184,34 @@ router.get('/available', auth, async (req, res) => {
   }
 });
 
+// Get delivery person profile
+router.get('/me', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const deliveryPerson = await DeliveryPerson.findOne({ userId: req.user._id });
+    if (!deliveryPerson) {
+      // If delivery person doesn't exist, create one
+      const newDeliveryPerson = new DeliveryPerson({
+        userId: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        phone: req.user.phone,
+        isAvailable: true
+      });
+      await newDeliveryPerson.save();
+      return res.json(newDeliveryPerson);
+    }
+
+    res.json(deliveryPerson);
+  } catch (error) {
+    console.error('Error fetching delivery person profile:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 
 
 module.exports = router; 
