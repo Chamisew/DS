@@ -319,6 +319,30 @@ router.put('/status/:orderId', auth, async (req, res) => {
   }
 });
 
+// Get active orders for delivery person
+router.get('/active', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ 
+        message: 'Access denied',
+        error: 'Only delivery personnel can view active orders'
+      });
+    }
 
+    const Order = await getOrderModel();
+    const activeOrders = await Order.find({
+      deliveryPerson: req.user._id,
+      status: { $in: ['in-progress'] }
+    });
+
+    res.json(activeOrders);
+  } catch (error) {
+    console.error('Error fetching active orders:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
 
 module.exports = router; 
