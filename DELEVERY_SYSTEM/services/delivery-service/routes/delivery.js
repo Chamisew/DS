@@ -212,6 +212,113 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// Accept order for delivery
+router.post('/accept/:orderId', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ 
+        message: 'Access denied',
+        error: 'Only delivery personnel can accept orders'
+      });
+    }
+
+    const Order = await getOrderModel();
+    const order = await Order.findById(req.params.orderId);
+    
+    if (!order) {
+      return res.status(404).json({ 
+        message: 'Order not found',
+        error: 'Invalid order ID'
+      });
+    }
+
+    if (order.status !== 'Ready for Pickup') {
+      return res.status(400).json({ 
+        message: 'Invalid order status',
+        error: 'Order is not ready for pickup'
+      });
+    }
+
+    if (order.deliveryPerson) {
+      return res.status(400).json({ 
+        message: 'Order already assigned',
+        error: 'This order has already been assigned to a delivery person'
+      });
+    }
+
+    // Update order status and assign delivery person
+    order.status = 'Out for Delivery';
+    order.deliveryPerson = req.user._id;
+    await order.save();
+
+    res.json({
+      message: 'Order accepted for delivery',
+      order
+    });
+  } catch (error) {
+    console.error('Error accepting order:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// Update order status
+router.put('/status/:orderId', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'delivery') {
+      return res.status(403).json({ 
+        message: 'Access denied',
+        error: 'Only delivery personnel can update order status'
+      });
+    }
+
+    const { status } = req.body;
+    if (!['Out for Delivery', 'Delivered'].includes(status)) {
+      return res.status(400).json({ 
+        message: 'Invalid status',
+        error: 'Status must be either "Out for Delivery" or "Delivered"'
+      });
+    }
+
+    const Order = await getOrderModel();
+    const order = await Order.findById(req.params.orderId);
+    
+    if (!order) {
+      return res.status(404).json({ 
+        message: 'Order not found',
+        error: 'Invalid order ID'
+      });
+    }
+
+    if (order.deliveryPerson.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        message: 'Access denied',
+        error: 'You are not assigned to this order'
+      });
+    }
+
+    // Update order status
+    order.status = status;
+    if (status === 'Delivered') {
+      order.actualDeliveryTime = new Date();
+    }
+    await order.save();
+
+    res.json({
+      message: 'Order status updated',
+      order
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
 
 
 module.exports = router; 
